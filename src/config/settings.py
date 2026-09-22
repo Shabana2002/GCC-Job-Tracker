@@ -150,31 +150,50 @@ DEFAULT_SOURCES_CONFIG = {
         "boards": [],
     },
     "apify": {
-        "enabled": False,
+        "enabled": True,
         "display_name": "Apify Actors",
         "actors": [
-            # Example only -- disabled until the user supplies a real Actor ID,
-            # inspects its actual input schema in the Apify console, and fills
-            # in `input_template` / `field_map` accordingly. We never invent
-            # Actor IDs or input parameters.
+            # Verified live against the real Actor (apify.com/curious_coder/indeed-scraper):
+            # its documented input schema (query/country/count), its ACTUAL dataset
+            # output keys observed from a real test run, and its real pricing
+            # ($0.10 per 1,000 results -- easily covered by Apify's free monthly
+            # credit at these volumes). Indeed's own GCC country subdomains
+            # (ae/qa/sa/kw/bh/om) were independently confirmed live.
+            #
+            # `max_combinations` caps how many (query, country) Actor runs a
+            # single "Run Search Now" click triggers for this actor; `count`
+            # and `max_charge_usd_per_run` cap each individual run's size/cost.
+            # Raise these once you're comfortable with the cost/time tradeoff.
             {
-                "name": "Example LinkedIn/Indeed GCC Jobs (CONFIGURE ME)",
-                "actor_id": "",
-                "enabled": False,
-                "countries": ["United Arab Emirates", "Qatar"],
-                "queries": ["AI Trainer", "Computer Science Teacher"],
-                "input_template": {},
+                "name": "Indeed GCC Jobs (curious_coder/indeed-scraper)",
+                "actor_id": "curious_coder/indeed-scraper",
+                "enabled": True,
+                "countries": ["ae", "qa", "sa", "kw", "bh", "om"],
+                "queries": [
+                    "AI Trainer", "Computer Science Teacher", "IT Teacher",
+                    "Python Trainer", "Technical Trainer", "ICT Teacher",
+                ],
+                "input_template": {
+                    "query": "{{query}}",
+                    "country": "{{country}}",
+                    "count": 15,
+                },
                 "field_map": {
                     "title": "title",
-                    "company": "company",
-                    "location": "location",
-                    "url": "url",
-                    "description": "description",
-                    "posted_date": "postedAt",
+                    "company": "companyDetails.name",
+                    "location": "formattedLocation",
+                    "url": "originalApplyUrl",
+                    "official_url": "originalApplyUrl",
+                    "description": "jobDescription",
+                    "requirements": "jobDescription",
+                    "posted_date": "pubDate",
                     "external_id": "id",
                     "salary_text": "salary",
                 },
-                "wait_secs": 180,
+                "max_combinations": 6,
+                "max_items_per_run": 15,
+                "max_charge_usd_per_run": 0.5,
+                "wait_secs": 120,
             }
         ],
     },

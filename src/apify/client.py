@@ -7,6 +7,8 @@ never sent to the browser or logged.
 from __future__ import annotations
 
 import os
+from datetime import timedelta
+from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 
@@ -34,34 +36,47 @@ def get_client():
 
 
 def run_actor_and_get_items(actor_id: str, run_input: Dict[str, Any],
-                             wait_secs: int = 180) -> List[Dict[str, Any]]:
+                             wait_secs: int = 180,
+                             max_items: Optional[int] = None,
+                             max_total_charge_usd: Optional[float] = None) -> List[Dict[str, Any]]:
     """
     Triggers the given Actor (or Task, if `actor_id` is a task ID) with
     `run_input`, waits up to `wait_secs` for it to finish, then returns the
     resulting dataset's items. Raises ApifyRunFailed on error/timeout so the
     caller can record it in job_runs without losing previously-collected data.
+
+    `max_total_charge_usd` is a hard server-side spend cap for pay-per-event
+    Actors -- Apify itself stops billing/collecting once it's hit, so a
+    misconfigured search can never run up an unexpected bill.
+
+    Targets apify-client >=3, whose ActorClient.call() returns a typed
+    pydantic `Run` model (snake_case attributes), not the dict the older 1.x
+    client returned.
     """
     if not actor_id:
         raise ApifyNotConfigured("No Actor ID configured for this Apify source entry.")
 
     client = get_client()
     try:
-        run = client.actor(actor_id).call(run_input=run_input, timeout_secs=wait_secs)
+        run = client.actor(actor_id).call(
+            run_input=run_input,
+            wait_duration=timedelta(seconds=wait_secs),
+            max_items=max_items,
+            max_total_charge_usd=Decimal(str(max_total_charge_usd)) if max_total_charge_usd else None,
+        )
     except Exception as exc:  # apify_client raises its own ApifyApiError subclasses
         raise ApifyRunFailed(f"Actor '{actor_id}' failed to run: {exc}") from exc
 
     if not run:
         raise ApifyRunFailed(f"Actor '{actor_id}' returned no run object.")
 
-    status = run.get("status")
-    if status != "SUCCEEDED":
-        raise ApifyRunFailed(f"Actor '{actor_id}' run ended with status '{status}'.")
+    if run.status != "SUCCEEDED":
+        raise ApifyRunFailed(f"Actor '{actor_id}' run ended with status '{run.status}'.")
 
-    dataset_id = run.get("defaultDatasetId")
-    if not dataset_id:
-        raise ApifyRunFailed(f"Actor '{actor_id}' run has no defaultDatasetId.")
+    if not run.default_dataset_id:
+        raise ApifyRunFailed(f"Actor '{actor_id}' run has no default_dataset_id.")
 
-    items = list(client.dataset(dataset_id).iterate_items())
+    items = list(client.dataset(run.default_dataset_id).iterate_items())
     return items
 
 
