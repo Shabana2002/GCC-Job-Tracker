@@ -142,12 +142,17 @@ DEFAULT_SOURCES_CONFIG = {
     "greenhouse": {
         "enabled": True,
         "display_name": "Greenhouse Job Boards (public API)",
-        "boards": ["careem", "tamara"],
+        # All verified live (board exists, returns real GCC-located jobs) via
+        # boards-api.greenhouse.io -- add more company tokens here any time.
+        "boards": ["careem", "tamara", "thunes", "planetlabs", "thinkmarkets",
+                   "cobblestoneenergy", "deliveroo"],
     },
     "lever": {
         "enabled": True,
         "display_name": "Lever Job Boards (public API)",
-        "boards": [],
+        # All verified live (board exists, returns real GCC-located jobs) via
+        # api.lever.co -- add more company tokens here any time.
+        "boards": ["binance", "tsmg", "xsolla", "airalo", "contentsquare"],
     },
     "apify": {
         "enabled": True,
